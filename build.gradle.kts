@@ -9,7 +9,7 @@ subprojects {
     apply(plugin = "maven-publish")
 
     group = "net.codeverse"
-    version = "0.1.0"
+    version = "0.1.1"
 
     repositories {
         mavenCentral()
