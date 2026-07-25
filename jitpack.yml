@@ -1,2 +1,4 @@
 jdk:
   - openjdk25
+install:
+  - ./gradlew :updater:publishToMavenLocal
