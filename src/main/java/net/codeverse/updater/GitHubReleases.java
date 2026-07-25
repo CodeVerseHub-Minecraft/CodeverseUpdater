@@ -24,7 +24,7 @@ import java.util.Optional;
  * rather than a crash. An update check that cannot reach GitHub is a check that
  * finds nothing, never a reason for the plugin around it to fail.
  */
-public final class GitHubReleases {
+public class GitHubReleases {
 
     private static final String API_ROOT = "https://api.github.com/repos/";
     private static final String USER_AGENT = "CodeverseUpdater";

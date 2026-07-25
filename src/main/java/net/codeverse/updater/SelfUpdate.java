@@ -28,7 +28,7 @@ public final class SelfUpdate {
     // Kept in step with the project version by hand, and asserted against the
     // build by a test, so a release cannot ship a library that misreports its
     // own version.
-    private static final String VERSION = "0.1.2";
+    private static final String VERSION = "0.1.3";
 
     private final GitHubReleases releases;
 

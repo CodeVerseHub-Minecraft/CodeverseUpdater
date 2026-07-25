@@ -1,6 +1,8 @@
 package net.codeverse.updater;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -38,6 +40,14 @@ public final class Updater {
     private final GitHubReleases releases;
     private final UpdateStager stager;
 
+    // Guards the rate limit. GitHub allows sixty unauthenticated requests an
+    // hour per address, shared across every plugin on the host, so a caller
+    // that schedules too tightly or an operator running a check command
+    // repeatedly must not be able to spend that budget. The previous answer is
+    // returned instead, which is what the caller would have got anyway.
+    private volatile Instant lastCheckedAt;
+    private volatile UpdateResult lastResult;
+
     public Updater(UpdaterConfig config) {
         this(config, new GitHubReleases(config.owner(), config.repo()));
     }
@@ -50,10 +60,34 @@ public final class Updater {
 
     /**
      * Checks once, blocking. Meant to be called from a plugin's own async
-     * scheduler, never from a server thread: it makes a network request and a
+     * scheduler, never from a server thread: it makes a network request and
      * possibly a download, neither of which belongs on the main thread.
+     *
+     * Calls made within {@link UpdaterConfig#checkInterval()} of the last one
+     * return that answer again without touching the network.
      */
     public UpdateResult check() {
+        UpdateResult cached = lastResult;
+        Instant last = lastCheckedAt;
+        if (cached != null && last != null
+                && Duration.between(last, Instant.now()).compareTo(config.checkInterval()) < 0) {
+            return cached;
+        }
+        UpdateResult result = performCheck();
+        lastCheckedAt = Instant.now();
+        lastResult = result;
+        return result;
+    }
+
+    /** Checks now, ignoring the interval. For an operator asking directly. */
+    public UpdateResult checkNow() {
+        UpdateResult result = performCheck();
+        lastCheckedAt = Instant.now();
+        lastResult = result;
+        return result;
+    }
+
+    private UpdateResult performCheck() {
         Optional<Release> newer;
         try {
             newer = findNewer();

@@ -69,3 +69,76 @@ class SelfUpdateTest {
         assertEquals(SelfUpdate.version(), SelfUpdate.currentVersion().original());
     }
 }
+
+class UpdaterThrottleTest {
+
+    private static final byte[] JAR = "jar".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+    /**
+     * The interval has to actually prevent network calls, or it is decoration.
+     * Sixty unauthenticated GitHub requests an hour are shared by every plugin
+     * on the host, so a caller that schedules tightly must not be able to spend
+     * that budget.
+     */
+    @Test
+    void repeatedChecksInsideTheIntervalDoNotHitTheNetwork(@TempDir Path tmp) throws Exception {
+        try (FakeGitHub github = new FakeGitHub()) {
+            String base = github.base();
+            String hash = Checksums.sha256(new java.io.ByteArrayInputStream(JAR));
+            github.route("/repos/a/b/releases",
+                    "[{\"tag_name\":\"v9.0.0\",\"draft\":false,\"prerelease\":false,\"body\":\"" + hash
+                            + "  p.jar\",\"assets\":[{\"name\":\"p.jar\",\"browser_download_url\":\""
+                            + base + "/dl\",\"size\":0}]}]");
+
+            CountingGitHub counting = new CountingGitHub("a", "b", github.client(), base + "/repos/");
+            Updater updater = new Updater(
+                    UpdaterConfig.forRepository("a", "b")
+                            .currentVersion("1.0.0")
+                            .updateFolder(tmp)
+                            .checkInterval(Duration.ofHours(6))
+                            .build(),
+                    counting);
+
+            updater.check();
+            updater.check();
+            updater.check();
+
+            assertEquals(1, counting.calls, "only the first check may reach GitHub");
+        }
+    }
+
+    @Test
+    void checkNowBypassesTheInterval(@TempDir Path tmp) throws Exception {
+        try (FakeGitHub github = new FakeGitHub()) {
+            String base = github.base();
+            github.route("/repos/a/b/releases", "[]");
+            CountingGitHub counting = new CountingGitHub("a", "b", github.client(), base + "/repos/");
+            Updater updater = new Updater(
+                    UpdaterConfig.forRepository("a", "b")
+                            .currentVersion("1.0.0")
+                            .updateFolder(tmp)
+                            .checkInterval(Duration.ofHours(6))
+                            .build(),
+                    counting);
+
+            updater.check();
+            updater.checkNow();
+
+            assertEquals(2, counting.calls, "an operator asking directly is answered directly");
+        }
+    }
+
+    private static final class CountingGitHub extends GitHubReleases {
+        int calls;
+
+        CountingGitHub(String owner, String repo, java.net.http.HttpClient http, String apiRoot) {
+            super(owner, repo, http, apiRoot);
+        }
+
+        @Override
+        public java.util.List<Release> list() throws java.io.IOException, InterruptedException {
+            calls++;
+            return super.list();
+        }
+    }
+}
