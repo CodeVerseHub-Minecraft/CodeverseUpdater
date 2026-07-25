@@ -24,4 +24,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CodeverseUpdater
-          path: updater/build/libs/updater-*.jar
+          path: build/libs/updater-*.jar
