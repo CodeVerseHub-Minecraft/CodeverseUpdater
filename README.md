@@ -137,5 +137,3 @@ MIT. See [LICENSE](LICENSE).
 This project is maintained by the CodeVerseHub-Minecraft Subteam, which works
 alongside the wider CodeVerseHub community but is a separate team. CodeVerseHub
 is not responsible for these projects.
-EOF
-echo "README written"; wc -l README.md
