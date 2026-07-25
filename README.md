@@ -31,7 +31,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.CodeVerseHub-Minecraft.CodeverseUpdater:updater:0.1.2")
+    implementation("com.github.CodeVerseHub-Minecraft:CodeverseUpdater:v0.1.2")
 }
 ```
 
